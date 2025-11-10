@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\DoctorController;
 
 
 Route::get('/', function () {
@@ -31,6 +32,11 @@ Route::post('/logout', function () {
 Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::get('/patients/{patient}/report', [AdminController::class, 'downloadReport'])->name('patients.report');
+});
+
+Route::middleware(['auth', 'can:admin'])->group(function () {
+    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+    Route::resource('doctors', DoctorController::class);
 });
 
 

@@ -2,63 +2,71 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Doctor;
 use Illuminate\Http\Request;
 
 class DoctorController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    // Show all doctors with search + pagination
+    public function index(Request $request)
     {
-        //
+        $search = $request->input('search');
+
+        $doctors = Doctor::when($search, function ($query, $search) {
+            return $query->where('name', 'ILIKE', "%{$search}%")
+                        ->orWhere('email', 'ILIKE', "%{$search}%")
+                        ->orWhere('specialization', 'ILIKE', "%{$search}%");
+        })
+        ->orderBy('id', 'desc')
+        ->paginate(5);
+
+        return view('doctors.index', compact('doctors', 'search'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store new doctor
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:doctors,email',
+            'specialization' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        Doctor::create($request->all());
+        return redirect()->route('doctors.index')->with('success', 'Doctor added successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    // Edit doctor form
+    public function edit(Doctor $doctor)
     {
-        //
+        return view('doctors.edit', compact('doctor'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    // Update doctor
+    public function update(Request $request, Doctor $doctor)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:doctors,email,' . $doctor->id,
+            'specialization' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $doctor->update($request->all());
+        return redirect()->route('doctors.index')->with('success', 'Doctor updated successfully!');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    // Delete doctor
+    public function destroy(Doctor $doctor)
     {
-        //
+        $doctor->delete();
+        return redirect()->route('doctors.index')->with('success', 'Doctor deleted successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+    public function create()
+{
+    return view('doctors.create');
+}
+
 }
