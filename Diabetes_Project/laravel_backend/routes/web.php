@@ -7,6 +7,7 @@ use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AppointmentController;
 
 
 Route::get('/', function () {
@@ -57,6 +58,13 @@ Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::put('users/{user}/role', [UserController::class, 'updateRole'])->name('users.updateRole');
 });
+
+// Doctor appointments
+Route::middleware(['auth', 'can:admin'])->group(function () {
+    Route::resource('appointments', AppointmentController::class)->only(['index','create','store','destroy']);
+    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
+});
+
 
 
 require __DIR__.'/auth.php';
