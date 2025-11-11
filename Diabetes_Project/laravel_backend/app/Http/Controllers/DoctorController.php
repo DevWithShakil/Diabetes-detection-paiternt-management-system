@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Appointment;
+use App\Models\Patient;
+use App\Models\DoctorNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DoctorController extends Controller
 {
@@ -92,5 +97,67 @@ class DoctorController extends Controller
     {
         $doctor->delete();
         return redirect()->route('doctors.index')->with('success', 'Doctor deleted successfully!');
+    }
+
+    // ✅ Dashboard Overview
+    public function dashboard()
+    {
+        $doctorId = auth()->id();
+
+        $appointments = Appointment::where('doctor_id', $doctorId)
+            ->with('patient')
+            ->orderBy('appointment_date', 'desc')
+            ->take(10)
+            ->get();
+
+        $total = $appointments->count();
+        $pending = $appointments->where('status', 'pending')->count();
+        $approved = $appointments->where('status', 'approved')->count();
+
+        return view('doctor.dashboard', compact('appointments', 'total', 'pending', 'approved'));
+    }
+
+
+    // ✅ Approve appointment
+    public function approve(Appointment $appointment)
+    {
+        $appointment->update(['status' => 'approved']);
+
+        // (Optional) Email notification to patient
+        // Mail::to($appointment->patient->email)->send(new AppointmentApprovedMail($appointment));
+
+        return back()->with('success', 'Appointment approved successfully.');
+    }
+
+    // ✅ Cancel appointment
+    public function cancel(Appointment $appointment)
+    {
+        $appointment->update(['status' => 'cancelled']);
+        return back()->with('warning', 'Appointment cancelled.');
+    }
+
+    // ✅ View patient report
+    public function viewReport(Patient $patient)
+    {
+        $result = is_array($patient->result)
+            ? $patient->result
+            : json_decode($patient->result, true);
+
+        $pdf = Pdf::loadView('patients.report', compact('patient', 'result'));
+        return $pdf->stream('Patient_Report_' . $patient->name . '.pdf');
+    }
+
+    // ✅ Store doctor notes
+    public function storeNote(Request $request, Appointment $appointment)
+    {
+        $request->validate(['note' => 'required|string|max:1000']);
+
+        DoctorNote::create([
+            'appointment_id' => $appointment->id,
+            'doctor_id' => auth()->id(),
+            'note' => $request->note,
+        ]);
+
+        return back()->with('success', 'Note added successfully.');
     }
 }

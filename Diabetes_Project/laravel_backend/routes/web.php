@@ -75,6 +75,20 @@ Route::middleware(['auth', 'can:doctor'])->group(function () {
     Route::post('/doctor/appointments/{appointment}/cancel', [DoctorDashboardController::class, 'cancel'])->name('doctor.appointments.cancel');
 });
 
+Route::middleware(['auth', 'can:doctor'])->group(function () {
+    Route::get('/doctor/dashboard', [DoctorController::class, 'dashboard'])->name('doctor.dashboard');
+
+    // Appointment actions
+    Route::post('/doctor/appointments/{appointment}/approve', [DoctorController::class, 'approve'])->name('doctor.appointments.approve');
+    Route::post('/doctor/appointments/{appointment}/cancel', [DoctorController::class, 'cancel'])->name('doctor.appointments.cancel');
+
+    // View report
+    Route::get('/doctor/patients/{patient}/report', [DoctorController::class, 'viewReport'])->name('doctor.patients.report');
+
+    // Add doctor notes
+    Route::post('/doctor/appointments/{appointment}/notes', [DoctorController::class, 'storeNote'])->name('doctor.notes.store');
+});
+
 
 
 require __DIR__.'/auth.php';
