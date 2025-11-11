@@ -8,6 +8,7 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\DoctorDashboardController;
 
 
 Route::get('/', function () {
@@ -63,6 +64,15 @@ Route::middleware(['auth', 'can:admin'])->group(function () {
 Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::resource('appointments', AppointmentController::class)->only(['index','create','store','destroy']);
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
+});
+
+
+// Doctors
+Route::middleware(['auth', 'can:doctor'])->group(function () {
+    Route::get('/doctor/dashboard', [DoctorDashboardController::class, 'index'])->name('doctor.dashboard');
+    Route::get('/doctor/appointments', [DoctorDashboardController::class, 'appointments'])->name('doctor.appointments');
+    Route::post('/doctor/appointments/{appointment}/approve', [DoctorDashboardController::class, 'approve'])->name('doctor.appointments.approve');
+    Route::post('/doctor/appointments/{appointment}/cancel', [DoctorDashboardController::class, 'cancel'])->name('doctor.appointments.cancel');
 });
 
 

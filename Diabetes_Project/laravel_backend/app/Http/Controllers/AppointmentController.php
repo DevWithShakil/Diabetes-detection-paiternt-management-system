@@ -4,16 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Appointment;
-use App\Models\Doctor;
+// use App\Models\Doctor;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentMail;
+use App\Models\User;
+
 
 class AppointmentController extends Controller
 {
     public function index()
     {
         $appointments = Appointment::with(['patient', 'doctor'])
+        ->whereHas('doctor', function ($q) {
+            $q->where('role', 'doctor'); // ✅ only real doctors
+        })
             ->orderBy('appointment_date', 'desc')
             ->paginate(10);
         return view('appointments.index', compact('appointments'));
@@ -21,16 +26,17 @@ class AppointmentController extends Controller
 
     public function create()
     {
-        $doctors = Doctor::all();
-        $patients = Patient::all();
-        return view('appointments.create', compact('doctors', 'patients'));
-    }
+     $patients = Patient::all(); // ✅ এখানে variable define করা হলো
+    $doctors = User::where('role', 'doctor')->get(); // ✅ doctor গুলো users টেবিল থেকে আসছে
+
+    return view('appointments.create', compact('patients', 'doctors'));
+}
 
     public function store(Request $r)
     {
        $data = $r->validate([
     'patient_id' => 'required|exists:patients,id',
-    'doctor_id' => 'required|exists:doctors,id',
+    'doctor_id' => 'required|exists:users,id',
     'appointment_date' => 'required|date',
 ]);
 
