@@ -27,4 +27,14 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class, 'doctor_id');
     }
+
+    public function notes()
+    {
+        return $this->hasMany(DoctorNote::class);
+    }
+
+    public function getNotesAttribute($value)
+{
+    return $this->relations['notes'] ?? collect();
+}
 }

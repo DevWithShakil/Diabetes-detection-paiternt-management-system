@@ -35,9 +35,13 @@
 
     {{-- Patients Table --}}
     <div class="card shadow p-4">
-        <h4 class="mb-3">Recent Patients</h4>
-        <table class="table table-bordered table-hover">
-            <thead class="table-dark">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>Recent Patients</h4>
+            <a href="{{ route('patients.create') }}" class="btn btn-primary btn-sm">+ Add New Patient</a>
+        </div>
+
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark text-center">
                 <tr>
                     <th>#</th>
                     <th>Name</th>
@@ -48,26 +52,40 @@
                     <th>Report</th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach($patients as $index => $patient)
+            <tbody class="text-center">
+                @forelse($patients as $index => $patient)
                     @php
-    $result = is_array($patient->result) ? $patient->result : json_decode($patient->result, true);
-@endphp
-
+                        $result = json_decode($patient->result, true);
+                        $prediction = $result['predictions']['Decision Tree'] ?? ($result['status'] ?? 'Pending');
+                    @endphp
                     <tr>
                         <td>{{ $index + 1 }}</td>
                         <td>{{ $patient->name }}</td>
                         <td>{{ $patient->age }}</td>
                         <td>{{ $patient->glucose }}</td>
                         <td>{{ $patient->bmi }}</td>
-                        <td>{{ $result['predictions']['Decision Tree'] ?? 'N/A' }}</td>
+                        <td>
+                            @if($prediction === 'Diabetic')
+                                <span class="badge bg-danger">Diabetic</span>
+                            @elseif($prediction === 'Non-Diabetic')
+                                <span class="badge bg-success">Non-Diabetic</span>
+                            @elseif($prediction === 'Pending' || $prediction === 'pending')
+                                <span class="badge bg-secondary">Pending</span>
+                            @else
+                                <span class="badge bg-warning text-dark">{{ $prediction }}</span>
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('patients.report', $patient->id) }}" class="btn btn-sm btn-outline-primary">
                                 Download PDF
                             </a>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-muted">No patients found.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>

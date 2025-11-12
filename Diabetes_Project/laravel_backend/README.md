@@ -1,59 +1,128 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🩺 Diabetes Prediction System — Laravel + Flask (ML Integrated)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 🚀 Overview
 
-## About Laravel
+A full-stack health prediction system built with **Laravel** (backend) and **Flask (Python)** for ML model integration.  
+The system supports **Admin**, **Doctor**, and **Patient** roles with role-based dashboards, appointments, and report management.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🔐 Common (Authenticated Routes)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Method | Route        | Controller | Description                                                      |
+| ------ | ------------ | ---------- | ---------------------------------------------------------------- |
+| GET    | `/dashboard` | —          | Redirect user to respective dashboard (admin / doctor / patient) |
+| POST   | `/logout`    | —          | Logout current user                                              |
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 🧑‍💼 ADMIN ROUTES
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Method           | Route              | Controller@Method       | Description                           |
+| ---------------- | ------------------ | ----------------------- | ------------------------------------- |
+| **🏠 Dashboard** |
+| GET              | `/admin/dashboard` | `AdminController@index` | Admin dashboard with stats & ML chart |
 
-## Laravel Sponsors
+| **👨‍⚕️ Doctor Management** |
+| GET | `/doctors` | `DoctorController@index` | List all doctors |
+| GET | `/doctors/create` | `DoctorController@create` | Add new doctor |
+| POST | `/doctors` | `DoctorController@store` | Save doctor info |
+| GET | `/doctors/{doctor}/edit` | `DoctorController@edit` | Edit doctor details |
+| PUT | `/doctors/{doctor}` | `DoctorController@update` | Update doctor info |
+| DELETE | `/doctors/{doctor}` | `DoctorController@destroy` | Delete a doctor |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| **🧍‍♂️ Patient Management** |
+| GET | `/patients` | `PatientController@index` | View all patients |
+| GET | `/patients/create` | `PatientController@create` | Add new patient |
+| POST | `/patients` | `PatientController@store` | Store patient data |
+| GET | `/patients/{patient}` | `PatientController@show` | View patient profile |
+| DELETE | `/patients/{patient}` | `PatientController@destroy` | Delete a patient |
+| GET | `/patients/{patient}/download` | `PatientController@downloadReport` | Download patient PDF report |
+| GET | `/patients/{patient}/report` | `AdminController@downloadReport` | Generate patient report (PDF) |
 
-### Premium Partners
+| **📅 Appointment Management** |
+| GET | `/appointments` | `AppointmentController@index` | List all appointments |
+| GET | `/appointments/create` | `AppointmentController@create` | Create appointment form |
+| POST | `/appointments` | `AppointmentController@store` | Save appointment |
+| PATCH | `/appointments/{appointment}/status` | `AppointmentController@updateStatus` | Update appointment status |
+| DELETE | `/appointments/{appointment}` | `AppointmentController@destroy` | Delete appointment |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| **📊 Report Management** |
+| GET | `/reports` | `ReportController@index` | View all reports |
+| DELETE | `/reports/{patient}` | `ReportController@destroy` | Delete a report |
 
-## Contributing
+| **👤 User Role Management** |
+| GET | `/users` | `UserController@index` | View all system users |
+| PUT | `/users/{user}/role` | `UserController@updateRole` | Change user role (admin/doctor/patient) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 🧑‍⚕️ DOCTOR ROUTES
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Method           | Route               | Controller@Method            | Description                               |
+| ---------------- | ------------------- | ---------------------------- | ----------------------------------------- |
+| **🏠 Dashboard** |
+| GET              | `/doctor/dashboard` | `DoctorController@dashboard` | Doctor dashboard (appointments, patients) |
 
-## Security Vulnerabilities
+| **📅 Appointments** |
+| POST | `/doctor/appointments/{appointment}/approve` | `DoctorController@approve` | Approve patient appointment |
+| POST | `/doctor/appointments/{appointment}/cancel` | `DoctorController@cancel` | Cancel appointment |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| **🧾 Reports & Notes** |
+| GET | `/doctor/patients/{patient}/report` | `DoctorController@viewReport` | View patient medical report |
+| POST | `/doctor/appointments/{appointment}/notes` | `DoctorController@storeNote` | Add notes for patient visit |
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## ⚙️ Middleware Summary
+
+| Middleware   | Used By       | Purpose                                   |
+| ------------ | ------------- | ----------------------------------------- |
+| `auth`       | All routes    | Ensures user is logged in                 |
+| `verified`   | `/dashboard`  | Only verified users can access dashboards |
+| `can:admin`  | Admin routes  | Restrict routes to admin role only        |
+| `can:doctor` | Doctor routes | Restrict routes to doctor role only       |
+
+---
+
+## 🧠 Tech Stack
+
+-   **Backend:** Laravel 12 (PHP 8.3)
+-   **ML Integration:** Flask (Python 3.13)
+-   **Database:** PostgreSQL
+-   **Frontend:** Blade (Bootstrap 5)
+-   **ML Models:** Logistic Regression, Random Forest, Decision Tree, SVM, KNN
+
+---
+
+## 📦 Project Features
+
+✅ Admin dashboard with real-time ML accuracy chart  
+✅ Doctor dashboard for viewing and managing appointments  
+✅ Secure user authentication and role-based authorization  
+✅ Appointment management (CRUD)  
+✅ Auto-generated patient reports (PDF via DomPDF)  
+✅ Flask-based ML prediction API integrated via HTTP
+
+---
+
+## 🔗 ML API Endpoint (Flask)
+
+| Method | Endpoint                        | Description                                                    |
+| ------ | ------------------------------- | -------------------------------------------------------------- |
+| POST   | `http://127.0.0.1:5000/predict` | Returns model predictions and accuracies based on patient data |
+
+**Example JSON request:**
+
+```json
+{
+    "Pregnancies": 0,
+    "Glucose": 150,
+    "BloodPressure": 80,
+    "SkinThickness": 25,
+    "Insulin": 100,
+    "BMI": 30.0,
+    "DiabetesPedigreeFunction": 0.5,
+    "Age": 45
+}
+```

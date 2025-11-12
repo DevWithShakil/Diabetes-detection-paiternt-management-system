@@ -105,10 +105,17 @@ class DoctorController extends Controller
         $doctorId = auth()->id();
 
         $appointments = Appointment::where('doctor_id', $doctorId)
-            ->with('patient')
+            ->with(['patient', 'notes' => function($q) {
+            $q->orderBy('created_at', 'desc');
+        }])
             ->orderBy('appointment_date', 'desc')
             ->take(10)
-            ->get();
+            ->get()
+            ->map(function($appointment){
+                    $appointment->notes = $appointment->notes ?? collect();
+                    return $appointment;
+            });
+
 
         $total = $appointments->count();
         $pending = $appointments->where('status', 'pending')->count();

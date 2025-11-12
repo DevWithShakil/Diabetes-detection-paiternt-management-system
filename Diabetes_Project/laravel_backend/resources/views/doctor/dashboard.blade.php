@@ -74,6 +74,31 @@
                                 <a href="{{ route('doctor.patients.report', $appointment->patient->id) }}" class="btn btn-info btn-sm">View Report</a>
                             </td>
                         </tr>
+
+                        {{-- 👇 Doctor Notes Section --}}
+                        <tr>
+                            <td colspan="4" class="bg-light">
+                                <strong>Doctor Notes:</strong>
+                               @if(!empty($appointment->notes) && count($appointment->notes) > 0)
+    @foreach ($appointment->notes as $note)
+        <div class="border p-2 mb-1 rounded bg-white">
+             <strong>{{ optional($note->doctor)->name }}</strong>:
+            {{ $note->note }}
+            <small class="text-muted float-end">{{ $note->created_at->diffForHumans() }}</small>
+        </div>
+    @endforeach
+@else
+    <p class="text-muted mb-2">No notes yet.</p>
+@endif
+
+                                {{-- Add New Note --}}
+                                <form action="{{ route('doctor.notes.store', $appointment->id) }}" method="POST" class="mt-2">
+                                    @csrf
+                                    <textarea name="note" class="form-control mb-2" rows="2" placeholder="Add a new note..."></textarea>
+                                    <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+                                </form>
+                            </td>
+                        </tr>
                     @empty
                         <tr><td colspan="4" class="text-center text-muted p-3">No appointments found</td></tr>
                     @endforelse

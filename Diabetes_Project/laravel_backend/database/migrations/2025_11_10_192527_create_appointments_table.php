@@ -9,14 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('appointments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
-            $table->foreignId('patient_id')->constrained()->onDelete('cascade');
-            $table->date('appointment_date');
-            $table->time('appointment_time');
-            $table->enum('status', ['pending', 'approved', 'completed'])->default('pending');
-            $table->text('notes')->nullable();
-            $table->timestamps();
+    $table->id();
+    $table->unsignedBigInteger('patient_id');
+    $table->unsignedBigInteger('doctor_id');
+    $table->date('appointment_date');
+    $table->string('status')->default('pending');
+    $table->time('time')->nullable();
+    $table->text('notes')->nullable();
+    $table->timestamps();
+
+    // ✅ Correct Foreign Keys
+    $table->foreign('patient_id')->references('id')->on('patients')->onDelete('cascade');
+    $table->foreign('doctor_id')->references('id')->on('users')->onDelete('cascade');
+
         });
     }
 

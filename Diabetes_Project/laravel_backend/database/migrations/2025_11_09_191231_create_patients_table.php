@@ -6,29 +6,28 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-   public function up(): void
-{
-    Schema::create('patients', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->integer('age');
-        $table->float('glucose');
-        $table->float('blood_pressure');
-        $table->float('skin_thickness');
-        $table->float('insulin');
-        $table->float('bmi');
-        $table->float('diabetes_pedigree');
-        $table->text('result')->nullable();
-        $table->timestamps();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('patients', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('name');
+            $table->integer('age');
+            $table->float('glucose');
+            $table->float('blood_pressure');
+            $table->float('skin_thickness');
+            $table->float('insulin');
+            $table->float('bmi');
+            $table->float('diabetes_pedigree');
+            $table->json('result')->nullable();
+            $table->timestamps();
 
-    /**
-     * Reverse the migrations.
-     */
+            // ✅ define foreign key constraint AFTER the column
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+        });
+    }
+
+
     public function down(): void
     {
         Schema::dropIfExists('patients');
