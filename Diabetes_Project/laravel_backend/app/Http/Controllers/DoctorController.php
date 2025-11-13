@@ -13,7 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class DoctorController extends Controller
 {
-    // Show all doctors with search + pagination
+    // Show list of doctors
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -21,8 +21,8 @@ class DoctorController extends Controller
         $doctors = User::where('role', 'doctor')
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'ILIKE', "%{$search}%")
-                            ->orWhere('email', 'ILIKE', "%{$search}%")
-                            ->orWhere('specialization', 'ILIKE', "%{$search}%");
+                             ->orWhere('email', 'ILIKE', "%{$search}%")
+                             ->orWhere('specialization', 'ILIKE', "%{$search}%");
             })
             ->orderBy('id', 'desc')
             ->paginate(5);
@@ -30,7 +30,7 @@ class DoctorController extends Controller
         return view('doctors.index', compact('doctors', 'search'));
     }
 
-    // Show create form
+    // Create doctor form
     public function create()
     {
         return view('doctors.create');
@@ -59,38 +59,36 @@ class DoctorController extends Controller
         return redirect()->route('doctors.index')->with('success', 'Doctor created successfully!');
     }
 
-    // Edit doctor form
+    // Edit doctor
     public function edit(User $doctor)
     {
         return view('doctors.edit', compact('doctor'));
     }
 
-    // Update doctor
-   public function update(Request $request, User $doctor)
-{
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email,' . $doctor->id,
-        'specialization' => 'nullable|string|max:255',
-        'phone' => 'nullable|string|max:20',
-        'password' => 'nullable|min:6|confirmed', // 🔐 password optional
-    ]);
-
     // Update doctor info
-    $doctor->name = $validated['name'];
-    $doctor->email = $validated['email'];
-    $doctor->specialization = $validated['specialization'] ?? null;
-    $doctor->phone = $validated['phone'] ?? null;
+    public function update(Request $request, User $doctor)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $doctor->id,
+            'specialization' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'password' => 'nullable|min:6|confirmed',
+        ]);
 
-    // ✅ Update password only if provided
-    if (!empty($validated['password'])) {
-        $doctor->password = Hash::make($validated['password']);
+        $doctor->name = $validated['name'];
+        $doctor->email = $validated['email'];
+        $doctor->specialization = $validated['specialization'] ?? null;
+        $doctor->phone = $validated['phone'] ?? null;
+
+        if (!empty($validated['password'])) {
+            $doctor->password = Hash::make($validated['password']);
+        }
+
+        $doctor->save();
+
+        return redirect()->route('doctors.index')->with('success', 'Doctor updated successfully!');
     }
-
-    $doctor->save();
-
-    return redirect()->route('doctors.index')->with('success', 'Doctor updated successfully!');
-}
 
     // Delete doctor
     public function destroy(User $doctor)
@@ -99,23 +97,33 @@ class DoctorController extends Controller
         return redirect()->route('doctors.index')->with('success', 'Doctor deleted successfully!');
     }
 
-    // ✅ Dashboard Overview
+
+    // ================================
+    //       DOCTOR DASHBOARD
+    // ================================
     public function dashboard()
     {
         $doctorId = auth()->id();
 
         $appointments = Appointment::where('doctor_id', $doctorId)
-            ->with(['patient', 'notes' => function($q) {
-            $q->orderBy('created_at', 'desc');
-        }])
-            ->orderBy('appointment_date', 'desc')
-            ->take(10)
+            ->with([
+                'patient',
+                'notes' => function ($q) {
+                    $q->orderBy('created_at', 'desc');
+                }
+            ])
+            ->orderBy('created_at', 'desc')   // NEW → Latest appointments first
             ->get()
-            ->map(function($appointment){
-                    $appointment->notes = $appointment->notes ?? collect();
-                    return $appointment;
-            });
+            ->map(function ($appointment) {
+                // Ensure doctor notes collection exists
+                $appointment->notes = $appointment->notes ?? collect();
 
+                // Attach patient diabetic status (0/1/null)
+                $report = json_decode($appointment->patient->result, true);
+                $appointment->diabetic = $report['prediction'] ?? null;
+
+                return $appointment;
+            });
 
         $total = $appointments->count();
         $pending = $appointments->where('status', 'pending')->count();
@@ -125,25 +133,21 @@ class DoctorController extends Controller
     }
 
 
-    // ✅ Approve appointment
+    // Approve appointment
     public function approve(Appointment $appointment)
     {
         $appointment->update(['status' => 'approved']);
-
-        // (Optional) Email notification to patient
-        // Mail::to($appointment->patient->email)->send(new AppointmentApprovedMail($appointment));
-
         return back()->with('success', 'Appointment approved successfully.');
     }
 
-    // ✅ Cancel appointment
+    // Cancel appointment
     public function cancel(Appointment $appointment)
     {
         $appointment->update(['status' => 'cancelled']);
         return back()->with('warning', 'Appointment cancelled.');
     }
 
-    // ✅ View patient report
+    // View patient report
     public function viewReport(Patient $patient)
     {
         $result = is_array($patient->result)
@@ -154,7 +158,7 @@ class DoctorController extends Controller
         return $pdf->stream('Patient_Report_' . $patient->name . '.pdf');
     }
 
-    // ✅ Store doctor notes
+    // Store doctor notes
     public function storeNote(Request $request, Appointment $appointment)
     {
         $request->validate(['note' => 'required|string|max:1000']);

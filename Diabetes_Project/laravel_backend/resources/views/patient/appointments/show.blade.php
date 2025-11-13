@@ -70,11 +70,11 @@
                     <i class="bi bi-arrow-left"></i> Back to Appointments
                 </a>
 
-                @if($appointment->status === 'approved')
+                {{-- @if($appointment->status === 'approved')
                     <a href="{{ route('patient.report', $appointment->patient_id) }}" class="btn btn-primary">
                         <i class="bi bi-file-medical"></i> View Report
                     </a>
-                @endif
+                @endif --}}
             </div>
         </div>
     </div>

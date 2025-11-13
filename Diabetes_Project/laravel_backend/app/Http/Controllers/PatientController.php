@@ -13,42 +13,45 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class PatientController extends Controller
 {
     /**
-     * 🏠 Show patient dashboard
+     * 🏠 Patient Dashboard
      */
     public function dashboard()
     {
         $user = Auth::user();
 
-        // Find patient profile based on user_id (not id)
-        $patient = Patient::where('user_id', $user->id)->first();
+        // Always fetch the latest patient record
+        $patient = Patient::where('user_id', $user->id)
+            ->orderBy('id', 'desc')
+            ->first();
 
-        // যদি নতুন patient হয় → তাকে detection form এ পাঠাও
         if (!$patient) {
             return redirect()->route('patient.detection');
         }
 
-        // Default data
-        $nextAppointment = Appointment::where('patient_id', $patient->id)
+        // Load next appointment with doctor + notes
+        $nextAppointment = Appointment::with([
+                'doctor',
+                'notes' => fn($q) => $q->orderBy('created_at', 'desc')
+            ])
+            ->where('patient_id', $patient->id)
             ->whereDate('appointment_date', '>=', now())
             ->orderBy('appointment_date', 'asc')
             ->first();
 
         $appointmentsCount = Appointment::where('patient_id', $patient->id)->count();
 
-        $latestReport = Patient::where('id', $patient->id)
-            ->orderBy('updated_at', 'desc')
-            ->first();
-
-        return view('patient.dashboard', compact('patient', 'nextAppointment', 'latestReport', 'appointmentsCount'));
+        return view('patient.dashboard', compact('patient', 'nextAppointment', 'appointmentsCount'));
     }
 
     /**
-     * 📅 Show all appointments for the logged-in patient
+     * 📅 View all patient appointments
      */
     public function appointments()
     {
+        $patient = Patient::where('user_id', Auth::id())->first();
+
         $appointments = Appointment::with('doctor')
-            ->where('patient_id', Auth::id())
+            ->where('patient_id', $patient->id)
             ->orderBy('appointment_date', 'desc')
             ->get();
 
@@ -56,7 +59,7 @@ class PatientController extends Controller
     }
 
     /**
-     * ➕ Create appointment form
+     * ➕ Appointment Create Form
      */
     public function createAppointment()
     {
@@ -65,7 +68,7 @@ class PatientController extends Controller
     }
 
     /**
-     * 💾 Store appointment
+     * 💾 Store Appointment
      */
     public function storeAppointment(Request $request)
     {
@@ -74,8 +77,10 @@ class PatientController extends Controller
             'appointment_date' => 'required|date|after_or_equal:today',
         ]);
 
+        $patient = Patient::where('user_id', Auth::id())->latest()->first();
+
         Appointment::create([
-            'patient_id' => Auth::id(),
+            'patient_id' => $patient->id,
             'doctor_id' => $validated['doctor_id'],
             'appointment_date' => $validated['appointment_date'],
             'status' => 'pending',
@@ -86,25 +91,27 @@ class PatientController extends Controller
     }
 
     /**
-     * 👁️ Show appointment details
+     * 👁️ Appointment Details
      */
     public function showAppointment($id)
     {
-        $appointment = Appointment::with('doctor')
+        $patient = Patient::where('user_id', Auth::id())->first();
+
+        $appointment = Appointment::with(['doctor', 'notes'])
             ->where('id', $id)
-            ->where('patient_id', Auth::id())
+            ->where('patient_id', $patient->id)
             ->firstOrFail();
 
         return view('patient.appointments.show', compact('appointment'));
     }
 
     /**
-     * 📄 View patient report
+     * 📄 View Patient Report
      */
     public function report(Patient $patient)
     {
         if ($patient->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized');
+            abort(403);
         }
 
         $result = json_decode($patient->result, true);
@@ -112,12 +119,12 @@ class PatientController extends Controller
     }
 
     /**
-     * ⬇️ Download report as PDF
+     * ⬇️ Download Report PDF
      */
     public function downloadReport(Patient $patient)
     {
         if ($patient->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized');
+            abort(403);
         }
 
         $data = [
@@ -130,7 +137,7 @@ class PatientController extends Controller
     }
 
     /**
-     * 🧪 Show detection form (for new users)
+     * 🧪 Detection Form
      */
     public function showDetectionForm()
     {
@@ -138,139 +145,95 @@ class PatientController extends Controller
     }
 
     /**
-     * 💾 Store detection data + ML API prediction
+     * 💾 Store Detection + ML Prediction
      */
     public function storeDetection(Request $request)
     {
-        if (!Auth::check()) {
-        return redirect()->route('login')->withErrors(['Please login first']);
-    }
-
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'age' => 'required|numeric',
-        'glucose' => 'required|numeric',
-        'blood_pressure' => 'required|numeric',
-        'skin_thickness' => 'required|numeric',
-        'insulin' => 'required|numeric',
-        'bmi' => 'required|numeric',
-        'diabetes_pedigree_function' => 'required|numeric',
-    ]);
-
-    $user = Auth::user();
-
-    try {
-        $response = Http::timeout(10)->post('http://127.0.0.1:5000/predict', [
-            "Pregnancies" => 0,
-            "Glucose" => $validated['glucose'],
-            "BloodPressure" => $validated['blood_pressure'],
-            "SkinThickness" => $validated['skin_thickness'],
-            "Insulin" => $validated['insulin'],
-            "BMI" => $validated['bmi'],
-            "DiabetesPedigreeFunction" => $validated['diabetes_pedigree_function'],
-            "Age" => $validated['age'],
-        ]);
-
-        if ($response->successful()) {
-            $prediction = $response->json(); // ✅ Flask response as JSON
-        } else {
-            $prediction = ['status' => 'API Error'];
-        }
-    } catch (\Exception $e) {
-        \Log::error('Flask API Error:', ['message' => $e->getMessage()]);
-        $prediction = ['status' => 'Pending'];
-    }
-
-    Patient::create([
-        'user_id' => $user->id,
-        'name' => $validated['name'],
-        'age' => $validated['age'],
-        'glucose' => $validated['glucose'],
-        'blood_pressure' => $validated['blood_pressure'],
-        'skin_thickness' => $validated['skin_thickness'],
-        'insulin' => $validated['insulin'],
-        'bmi' => $validated['bmi'],
-        'diabetes_pedigree' => $validated['diabetes_pedigree_function'],
-        'result' => json_encode($prediction),
-    ]);
-
-    return redirect()->back()->with('success', '✅ Prediction saved successfully!');
-    }
-
-    // ======================================================
-    // 🔹 Admin: Create Patient Form
-    // ======================================================
-    public function create()
-    {
-        return view('admin.patients.create');
-    }
-
-    // ======================================================
-    // 🔹 Admin: Store Patient
-    // ======================================================
-    public function store(Request $request)
-    {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
             'age' => 'required|numeric',
-            'glucose' => 'nullable|numeric',
-            'blood_pressure' => 'nullable|numeric',
-            'skin_thickness' => 'nullable|numeric',
-            'insulin' => 'nullable|numeric',
-            'bmi' => 'nullable|numeric',
-            'diabetes_pedigree' => 'nullable|numeric',
+            'glucose' => 'required|numeric',
+            'blood_pressure' => 'required|numeric',
+            'skin_thickness' => 'required|numeric',
+            'insulin' => 'required|numeric',
+            'bmi' => 'required|numeric',
+            'diabetes_pedigree_function' => 'required|numeric',
         ]);
 
-        // Step 1: Create user
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => bcrypt('12345678'),
-            'role' => 'patient',
-        ]);
+        $user = Auth::user();
 
-        // Step 2: Send data to ML model
+        // Call ML API
         try {
-            $response = Http::post('http://127.0.0.1:5000/predict', [
+            $response = Http::timeout(10)->post('http://127.0.0.1:5000/predict', [
                 "Pregnancies" => 0,
-                "Glucose" => $validated['glucose'] ?? 0,
-                "BloodPressure" => $validated['blood_pressure'] ?? 0,
-                "SkinThickness" => $validated['skin_thickness'] ?? 0,
-                "Insulin" => $validated['insulin'] ?? 0,
-                "BMI" => $validated['bmi'] ?? 0,
-                "DiabetesPedigreeFunction" => $validated['diabetes_pedigree'] ?? 0,
+                "Glucose" => $validated['glucose'],
+                "BloodPressure" => $validated['blood_pressure'],
+                "SkinThickness" => $validated['skin_thickness'],
+                "Insulin" => $validated['insulin'],
+                "BMI" => $validated['bmi'],
+                "DiabetesPedigreeFunction" => $validated['diabetes_pedigree_function'],
                 "Age" => $validated['age'],
             ]);
 
-            $prediction = $response->json();
+            $prediction = $response->successful() ? $response->json() : ['status' => 'API Error'];
+
         } catch (\Exception $e) {
-            $prediction = ['status' => 'Error', 'message' => $e->getMessage()];
+            $prediction = ['status' => 'Pending'];
         }
 
-        // Step 3: Create patient record
+        // Save in DB
         Patient::create([
             'user_id' => $user->id,
             'name' => $validated['name'],
             'age' => $validated['age'],
-            'glucose' => $validated['glucose'] ?? null,
-            'blood_pressure' => $validated['blood_pressure'] ?? null,
-            'skin_thickness' => $validated['skin_thickness'] ?? null,
-            'insulin' => $validated['insulin'] ?? null,
-            'bmi' => $validated['bmi'] ?? null,
-            'diabetes_pedigree' => $validated['diabetes_pedigree'] ?? null,
+            'glucose' => $validated['glucose'],
+            'blood_pressure' => $validated['blood_pressure'],
+            'skin_thickness' => $validated['skin_thickness'],
+            'insulin' => $validated['insulin'],
+            'bmi' => $validated['bmi'],
+            'diabetes_pedigree' => $validated['diabetes_pedigree_function'],
             'result' => json_encode($prediction),
         ]);
 
-        return redirect()->route('patients.index')->with('success', '✅ Patient created and prediction saved successfully!');
+        return redirect()->back()->with('success', 'Prediction saved successfully!');
     }
 
-    // ======================================================
-    // 🔹 Admin: Show All Patients
-    // ======================================================
-    public function index()
+    /**
+     * ✏ Simple Test Input (no prediction change)
+     */
+    public function showSimpleTestForm()
     {
-        $patients = Patient::with('user')->latest()->get();
-        return view('admin.patients.index', compact('patients'));
+        $patient = Patient::where('user_id', Auth::id())->first();
+
+        if (!$patient) {
+            return redirect()->route('patient.detection');
+        }
+
+        return view('patient.simple_test');
+    }
+
+    /**
+     * 💾 Update simple test data (keep old prediction)
+     */
+    public function storeSimpleTest(Request $request)
+    {
+        $validated = $request->validate([
+            'glucose' => 'required|numeric',
+            'insulin' => 'required|numeric',
+            'bmi' => 'required|numeric',
+            'blood_pressure' => 'nullable|numeric',
+        ]);
+
+        $patient = Patient::where('user_id', Auth::id())->latest()->first();
+
+        $patient->update([
+            'glucose' => $validated['glucose'],
+            'insulin' => $validated['insulin'],
+            'bmi' => $validated['bmi'],
+            'blood_pressure' => $validated['blood_pressure'] ?? null,
+        ]);
+
+        return redirect()->route('patient.dashboard')
+            ->with('success', 'Your test has been submitted and is under doctor review.');
     }
 }

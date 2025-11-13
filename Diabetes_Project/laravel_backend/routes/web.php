@@ -114,6 +114,19 @@ Route::middleware(['auth', 'can:patient'])->group(function () {
     Route::get('/patient/report/{patient}/download', [PatientController::class, 'downloadReport'])->name('patient.report.download');
 });
 
+// Patient Basic Test Input
+Route::get('/patient/add-test', [PatientController::class, 'showSimpleTestForm'])
+    ->middleware(['auth'])
+    ->name('patient.simpletest');
+
+Route::post('/patient/add-test', [PatientController::class, 'storeSimpleTest'])
+    ->middleware(['auth'])
+    ->name('patient.simpletest.store');
+
+
+
+
+
 
 // ======================================================
 // 🔹 LOGOUT
