@@ -47,16 +47,18 @@ class PatientController extends Controller
      * 📅 View all patient appointments
      */
     public function appointments()
-    {
-        $patient = Patient::where('user_id', Auth::id())->first();
+{
+    // FIX: Always fetch the latest patient record
+    $patient = Patient::where('user_id', Auth::id())->latest()->first();
 
-        $appointments = Appointment::with('doctor')
-            ->where('patient_id', $patient->id)
-            ->orderBy('appointment_date', 'desc')
-            ->get();
+    $appointments = Appointment::with('doctor')
+        ->where('patient_id', $patient->id)
+        ->orderBy('appointment_date', 'desc')
+        ->get();
 
-        return view('patient.appointments.index', compact('appointments'));
-    }
+    return view('patient.appointments.index', compact('appointments'));
+}
+
 
     /**
      * ➕ Appointment Create Form
@@ -93,17 +95,19 @@ class PatientController extends Controller
     /**
      * 👁️ Appointment Details
      */
-    public function showAppointment($id)
-    {
-        $patient = Patient::where('user_id', Auth::id())->first();
+   public function showAppointment($id)
+{
+    // FIX → always use latest patient record
+    $patient = Patient::where('user_id', Auth::id())->latest()->first();
 
-        $appointment = Appointment::with(['doctor', 'notes'])
-            ->where('id', $id)
-            ->where('patient_id', $patient->id)
-            ->firstOrFail();
+    $appointment = Appointment::with(['doctor', 'notes'])
+        ->where('id', $id)
+        ->where('patient_id', $patient->id)
+        ->firstOrFail();
 
-        return view('patient.appointments.show', compact('appointment'));
-    }
+    return view('patient.appointments.show', compact('appointment'));
+}
+
 
     /**
      * 📄 View Patient Report
@@ -129,7 +133,7 @@ class PatientController extends Controller
 
         $data = [
             'patient' => $patient,
-            'result' => json_decode($patient->result, true),
+            'result'  => json_decode($patient->result, true),
         ];
 
         $pdf = Pdf::loadView('patient.reports.pdf', $data);
@@ -137,12 +141,23 @@ class PatientController extends Controller
     }
 
     /**
-     * 🧪 Detection Form
+     * 🧪 Detection Form — Auto-fill user name (NON-editable)
      */
     public function showDetectionForm()
-    {
-        return view('patient.detection');
+{
+    $user = Auth::user();
+
+    // Check if patient already submitted detection data
+    $existing = Patient::where('user_id', $user->id)->exists();
+
+    if ($existing) {
+        return redirect()->route('patient.dashboard')
+            ->with('error', 'Your data is already recorded.');
     }
+
+    return view('patient.detection', compact('user'));
+}
+
 
     /**
      * 💾 Store Detection + ML Prediction
@@ -176,7 +191,6 @@ class PatientController extends Controller
             ]);
 
             $prediction = $response->successful() ? $response->json() : ['status' => 'API Error'];
-
         } catch (\Exception $e) {
             $prediction = ['status' => 'Pending'];
         }
@@ -195,7 +209,9 @@ class PatientController extends Controller
             'result' => json_encode($prediction),
         ]);
 
-        return redirect()->back()->with('success', 'Prediction saved successfully!');
+        return redirect()->route('patient.dashboard')
+    ->with('success', 'Prediction saved successfully!');
+
     }
 
     /**

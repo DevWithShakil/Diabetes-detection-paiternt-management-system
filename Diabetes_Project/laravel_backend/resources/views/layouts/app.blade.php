@@ -11,7 +11,21 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">Diabetes Admin Panel</a>
+            <a class="navbar-brand" href="#">
+                @php
+    $role = auth()->user()->role ?? 'patient';
+
+    $panelTitle = match($role) {
+        'admin' => 'Diabetes Admin Panel',
+        'doctor' => 'Doctor Dashboard',
+        'patient' => 'Patient Dashboard',
+        default => 'Diabetes System',
+    };
+@endphp
+
+<h4 class="navbar-brand">{{ $panelTitle }}</h4>
+
+            </a>
             <div class="d-flex">
                 <span class="navbar-text text-white me-3">{{ Auth::user()->name ?? 'Guest' }}</span>
                 <a class="btn btn-outline-light btn-sm" href="{{ route('logout') }}"
